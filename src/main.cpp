@@ -134,7 +134,7 @@ int render_lyapunov(std::string outname,
   cl_uint ret_num_platforms;
   cl_int ret = 0;
   ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
-  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices);
+  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, 1, &device_id, &ret_num_devices);
 
 
   //Context
@@ -191,9 +191,20 @@ int render_lyapunov(std::string outname,
   ret = clSetKernelArg(kernel, 6, sizeof(int), (void *) &WIDTH);
   ret = clSetKernelArg(kernel, 7, sizeof(cl_mem), (void *) &cl_d);
 
+  int lgs_targ = 64;
+  while(((WIDTH*HEIGHT)%lgs_targ)!=0){
+    lgs_targ = (int)lgs_targ/2;
+  }
+  int lg1_targ = lgs_targ;
+  while((HEIGHT%lg1_targ)!=0){
+    lg1_targ = (int)lg1_targ/2;
+  }
+  int lg0_targ = (int)lgs_targ/lg1_targ;
+
+
   // Execute the OpenCL kernel on the list
   size_t global_item_size[2] = {(size_t)WIDTH,(size_t)HEIGHT}; // Process the entire lists
-  size_t local_item_size[2] = {8,8}; // Divide work items into groups of 64
+  size_t local_item_size[2] = {(size_t)lg0_targ,(size_t)lg1_targ}; // Divide work items into groups of 64
   cl_event event;
   cl_event event2;
 

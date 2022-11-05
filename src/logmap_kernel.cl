@@ -1,17 +1,17 @@
 __kernel void logmap(__global float* v,
-                     __global read_only float* a,
-                     __global read_only float* b,
-                     __global read_only int* o,
-                     read_only int l,
-                     read_only int n,
-                     read_only int width,
+                     __global float* a,
+                     __global float* b,
+                     __global int* o,
+                     int l,
+                     int n,
+                     int width,
                      __global float* d)
 {
 	int j = get_global_id(0);
   int i = get_global_id(1);
   int loc = width*i+j;
 
-  float eps = 0.000001;
+  float eps = 0.001;
   float cv = v[loc];
   for(int it = 0; it < n; it++){
     int co = it%l;
