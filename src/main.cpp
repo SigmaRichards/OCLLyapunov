@@ -72,12 +72,14 @@ std::vector<uchar> get_cols(std::vector<float> vin, std::vector<float> c1, std::
     //std::vector<uchar> in;
     for(int j = 0; j < c1.size(); j++){
       if(vin[i]<0){
-        float fv = exp(vin[i])*c1[j];
+        float fv = exp(vin[i]);
         fv = pow(fv,exp_p);
+	fv = fv*c1[j];
         out.push_back((uchar)(int)(255*fv));
       }else{
-        float fv = exp(-vin[i])*c2[j];
+        float fv = exp(-vin[i]);
         fv = pow(fv,exp_p);
+	fv = fv*c2[j];
         out.push_back((uchar)(int)(255*fv));
       }
     }
