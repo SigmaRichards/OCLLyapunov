@@ -245,9 +245,6 @@ int render_lyapunov(std::string outname,
   cv::cvtColor(img_o, img_o, cv::COLOR_BGR2RGB);
   cv::imwrite(outname, img_o);
 
-  cv::imshow("Display window", img_o);
-  cv::waitKey(0);
-
   return 0;
 }
 
