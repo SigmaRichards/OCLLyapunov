@@ -98,7 +98,9 @@ int render_lyapunov(std::string outname,
                     int n,
                     std::vector<int> ord,
                     std::vector<float> c1,
-                    std::vector<float> c2)
+                    std::vector<float> c2,
+		    int platform_ind,
+		    int device_ind)
 {
   std::vector<float> v_vals(WIDTH*HEIGHT,x0);
   std::vector<float> d_vals(WIDTH*HEIGHT,0);
@@ -130,13 +132,23 @@ int render_lyapunov(std::string outname,
   fclose(fp);
 
   // Get platform and device information
-  cl_platform_id platform_id = NULL;
-  cl_device_id device_id = NULL;
+  cl_platform_id platform_id[platform_ind+1];
+  cl_device_id device_ids[device_ind+1];
+  cl_device_id device_id;
   cl_uint ret_num_devices;
   cl_uint ret_num_platforms;
   cl_int ret = 0;
-  ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
-  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, 1, &device_id, &ret_num_devices);
+  ret = clGetPlatformIDs(platform_ind+1, &platform_id[0], &ret_num_platforms);
+  if(ret_num_platforms < platform_ind+1){
+    fprintf(stderr, "Platform index %i does not exist. Please run with `-l' for OpenCL device info.\n",platform_ind);
+    return 1;
+  }
+  ret = clGetDeviceIDs(platform_id[platform_ind], CL_DEVICE_TYPE_ALL, device_ind+1, &device_ids[0], &ret_num_devices);
+  if(ret_num_devices < device_ind+1){
+    fprintf(stderr, "Device index %i does not exist for platform %i. Please run with `-l' for OpenCL device info.\n",device_ind,platform_ind);
+    return 1;
+  }
+  device_id = device_ids[device_ind];
 
 
   //Context
@@ -260,10 +272,12 @@ int main(int argc, char* argv[]){
   std::string c1r = "";
   std::string c2r = "";
 
+  std::vector<int> cl_dev = {0,0};
+
   opterr = 0;
 
   //Parse Inputs
-  while ((c = getopt (argc, argv, "lw:h:a:b:x:s:o:p:n:1:2:")) != -1)
+  while ((c = getopt (argc, argv, "lw:h:a:b:x:s:o:p:n:1:2:c:")) != -1)
     switch (c)
       {
       case 'l':
@@ -342,6 +356,13 @@ int main(int argc, char* argv[]){
           return -1;
         }
         break;
+
+      case 'c':
+	cl_dev = clean_inta(optarg);
+	if(cl_dev.size()==0){
+	  fprintf(stderr,"Bad argument given to `-%c'.\n",'c');
+	}
+	break;
       case '?':
         if(isprint (optopt))
           fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -366,7 +387,9 @@ int main(int argc, char* argv[]){
     c2 = hex2col(c2r);
   }
 
+  int profile_ind = cl_dev[0];
+  int device_ind = cl_dev[1];
 
-  int ret = render_lyapunov(outname,WIDTH,HEIGHT,ARANG,BRANG,x0,exp_p,n,ord,c1,c2);
+  int ret = render_lyapunov(outname,WIDTH,HEIGHT,ARANG,BRANG,x0,exp_p,n,ord,c1,c2,profile_ind,device_ind);
 	return ret;
 }
