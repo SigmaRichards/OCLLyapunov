@@ -26,7 +26,7 @@ Below are all the options. All options are optional.
 
  - `-n` number of iterations to calculate limit over. Since the actual lyupanov exponent needs to be calculated as the limit $n$ approaches infinity, we need to specify some stopping point. Example: `-n 10000`.
 
- - `-1` and `-2` specify the colours to use in the image creation process. `-1` specifies the color of stable attractors, while `-2` specifies the color of chaotic attractors. These values should be given as hex codes. Because of the way the exponents are calculated these will be the colors of the brightest pixels. May be either BGR or RGB. Example: `-1#FF0000 -2 #0000FF`
+ - `-1` and `-2` specify the colours to use in the image creation process. `-1` specifies the color of stable attractors, while `-2` specifies the color of chaotic attractors. These values should be given as hex codes. Because of the way the exponents are calculated these will be the colors of the brightest pixels. Colors are RGB. Example: `-1#FF0000 -2 #0000FF`
 
 
 ## Explanation
@@ -45,7 +45,7 @@ $$x_{n+1} = r_{s_n}x_n(1-x_n)$$
 
 With $r_{s_n}= r_A$ if $s_n=A$ or $r_{s_n} = r_B$ if $s_n==B$. We can evaluate the stability of the map for given values $r_A,r_B$ by calculating the lyapunov exponent:
 
-$$\lambda = \lim_{n\rightarrow \infinity} \frac{1}{n} \sum_{i=1}^{n} \log |f'(x_i)|$$
+$$\lambda = \lim_{n\rightarrow \infty} \frac{1}{n} \sum_{i=1}^{n} \log |f'(x_i)|$$
 
 We can generate a fractal by considering the grid/matrix of $r_A,r_B$ pairs over a given range in $\mathcal{R}^2$ for some initial starting value $x_0$.
 

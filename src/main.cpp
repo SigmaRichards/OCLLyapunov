@@ -242,6 +242,7 @@ int render_lyapunov(std::string outname,
   auto colim = get_cols(d_vals, c1, c2,exp_p);
 
   cv::Mat img_o(HEIGHT,WIDTH,CV_8UC3,colim.data());
+  cv::cvtColor(img_o, img_o, cv::COLOR_BGR2RGB);
   cv::imwrite(outname, img_o);
 
   cv::imshow("Display window", img_o);
