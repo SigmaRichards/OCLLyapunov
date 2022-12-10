@@ -10,13 +10,13 @@ General use will be like:
 
 Below are all the options. All options are optional.
 
- - `-l` lists the available OpenCL devices on your system. Once implemented you will be able to specify a specific device you want the program to run on.
+ - `-l` lists the available OpenCL devices on your system. Can then further specify exactly which device using `-c`. Example: `-c 1,0` will use device 1,0 from the output of `-l` i.e. Platform 1, device 0. These values should be the same output from clinfo.
 
  - `-w` and `-h` specifies the width and height (respectively) of the image you want rendered. This value should be an integer.
 
  - `-s` specifies the sequence of As and Bs (given as 0s and 1s respectively). Values should be sperated by a comma. Example: `-s 0,1`
 
- - `-a` and `-b` specifies the range to copute the $r$ values for A and B respectively. This should be given as a pair of float values separated by a comma. Example: `-a 3.0,4` will compute evenly separated $r$ values from $1$ to $4$.
+ - `-a` and `-b` specifies the range to copute the $r$ values for A and B respectively. This should be given as a pair of float values separated by a comma. Example: `-a 3.0,4` will compute evenly separated $r$ values from $3$ to $4$.
 
  - `-x` specifies the starting $x_0$ value for each point. This value should be a single float. Example: `-x 0.500`. 
 
