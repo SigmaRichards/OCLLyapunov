@@ -96,6 +96,7 @@ int render_lyapunov(std::string outname,
                     float x0,
                     int exp_p,
                     int n,
+		    int r,
                     std::vector<int> ord,
                     std::vector<float> c1,
                     std::vector<float> c2,
@@ -105,8 +106,11 @@ int render_lyapunov(std::string outname,
   std::vector<float> v_vals(WIDTH*HEIGHT,x0);
   std::vector<float> d_vals(WIDTH*HEIGHT,0);
 
-  std::vector<float> a_rvs = build_rvec(ARANG,WIDTH);
-  std::vector<float> b_rvs = build_rvec(BRANG,HEIGHT);
+  std::vector<float> a_rvs = build_rvec(ARANG,HEIGHT);
+  std::vector<float> b_rvs = build_rvec(BRANG,WIDTH);
+
+  int r_actual = r;
+  if (r_actual < 1) r_actual = 1;
 
   int olen = (int)ord.size();
 
@@ -195,6 +199,9 @@ int render_lyapunov(std::string outname,
   // Create the OpenCL kernel
   cl_kernel kernel = clCreateKernel(program, "logmap", &ret);
 
+  int is_not_last = 0;
+  int is_last = 1;
+
   // Set the arguments of the kernel
   ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &cl_v);
   ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &cl_a);
@@ -204,6 +211,8 @@ int render_lyapunov(std::string outname,
   ret = clSetKernelArg(kernel, 5, sizeof(int), (void *) &n);
   ret = clSetKernelArg(kernel, 6, sizeof(int), (void *) &WIDTH);
   ret = clSetKernelArg(kernel, 7, sizeof(cl_mem), (void *) &cl_d);
+  ret = clSetKernelArg(kernel, 8, sizeof(int), (void *) &is_not_last);
+  ret = clSetKernelArg(kernel, 9, sizeof(int), (void *) &r_actual);
 
   int lgs_targ = 64;
   while(((WIDTH*HEIGHT)%lgs_targ)!=0){
@@ -219,12 +228,20 @@ int render_lyapunov(std::string outname,
   // Execute the OpenCL kernel on the list
   size_t global_item_size[2] = {(size_t)WIDTH,(size_t)HEIGHT}; // Process the entire lists
   size_t local_item_size[2] = {(size_t)lg0_targ,(size_t)lg1_targ}; // Divide work items into groups of 64
-  cl_event event;
-  cl_event event2;
 
-  ret = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, &global_item_size[0], &local_item_size[0], 0, NULL, &event);
-  clWaitForEvents(1, &event);
-  ret = clEnqueueReadBuffer(command_queue, cl_d, CL_TRUE, 0, d_vals.size() * sizeof(float), &p_d[0], 1, &event, NULL);
+
+  cl_event kernel_evs[r];
+
+  ret = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, &global_item_size[0], &local_item_size[0], 0, NULL, &kernel_evs[0]);
+
+  for(int i = 1; i < r_actual; i++){
+	if ((r-1)==i){
+	  ret = clSetKernelArg(kernel, 8, sizeof(int), (void *) &is_last);
+	}
+	ret = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, &global_item_size[0], &local_item_size[0], 1, &kernel_evs[i-1], &kernel_evs[i]);
+  }
+
+  ret = clEnqueueReadBuffer(command_queue, cl_d, CL_TRUE, 0, d_vals.size() * sizeof(float), &p_d[0], 1, &kernel_evs[r-1], NULL);
 
   //Clean Memory
   ret = clFlush(command_queue);
@@ -248,8 +265,26 @@ int render_lyapunov(std::string outname,
   return 0;
 }
 
+void print_input_args(std::string outname,
+		      int width, int height,
+		      std::vector<float> arang,
+		      std::vector<float> brang,
+		      float x0,int exp_p,int n,int r,
+		      std::vector<int> ord,
+		      std::vector<float> c1,
+		      std::vector<float> c2,
+		      std::vector<int> dev){
+  printf("Width: %i\n",width);
+  printf("Height: %i\n",height);
+  printf("N-iter: %i\n",n);
+  printf("Repeats: %i\n",r);
+  printf("Power: %i\n",exp_p);
+}
+
+
 int main(int argc, char* argv[]){
   bool lflag = 0;//Print all devices when used
+  bool verbose = false;//Used for helpers
   int dflag = 0;//Used specific device id
 
   int index;
@@ -263,6 +298,7 @@ int main(int argc, char* argv[]){
   float x0 = 0.5;
   int exp_p = 4;
   int n = 100000;
+  int r = 1;
   std::vector<int> ord = {0,1};
   std::vector<float> c1 = {0,0,1};
   std::vector<float> c2 = {1,0,0};
@@ -275,12 +311,16 @@ int main(int argc, char* argv[]){
   opterr = 0;
 
   //Parse Inputs
-  while ((c = getopt (argc, argv, "lw:h:a:b:x:s:o:p:n:1:2:c:")) != -1)
+  while ((c = getopt (argc, argv, "lvw:h:a:b:x:s:o:p:n:r:1:2:c:")) != -1)
     switch (c)
       {
       case 'l':
         lflag = 1;
         break;
+      case 'v':
+	verbose = true;
+	printf("Verbose mode on.\n");
+	break;
       case 'n':
         n = clean_int(optarg);
         if(n==-1){
@@ -288,6 +328,12 @@ int main(int argc, char* argv[]){
           return -1;
         }
         break;
+      case 'r':
+	r = clean_int(optarg);
+	if(r == -1){
+	  fprintf (stderr, "Bad argument given to `-%c'.\n",'r');
+	}
+	break;
       case 'w':
         WIDTH = clean_int(optarg);
         if(WIDTH==-1){
@@ -387,7 +433,10 @@ int main(int argc, char* argv[]){
 
   int profile_ind = cl_dev[0];
   int device_ind = cl_dev[1];
-
-  int ret = render_lyapunov(outname,WIDTH,HEIGHT,ARANG,BRANG,x0,exp_p,n,ord,c1,c2,profile_ind,device_ind);
+  if(verbose){
+    print_input_args(outname,WIDTH,HEIGHT,ARANG,BRANG,
+		     x0,exp_p,n,r,ord,c1,c2,cl_dev);
+  }
+  int ret = render_lyapunov(outname,WIDTH,HEIGHT,ARANG,BRANG,x0,exp_p,n,r,ord,c1,c2,profile_ind,device_ind);
 	return ret;
 }

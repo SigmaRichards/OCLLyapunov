@@ -24,7 +24,9 @@ Below are all the options. All options are optional.
 
  - `-p` power term to increase contrast. Since the exponents are in the infinite domain, the need to be converted to 0-1 to be output as an image. This is done by computing $l = \exp{-|\lambda|}$. By default, most values are close to $1$ meaning there is little contrast. This parameter essentially computes $\hat{l} = l^p$ movnig more points further closer to 0. If you'd like to increase contrast in processing step you can increase this value to an integer. Example: `-p 3`.
 
- - `-n` number of iterations to calculate limit over. Since the actual lyupanov exponent needs to be calculated as the limit $n$ approaches infinity, we need to specify some stopping point. Example: `-n 10000`.
+ - `-n` number of iterations to calculate limit over. Since the actual lyupanov exponent needs to be calculated as the limit $n$ approaches infinity, we need to specify some stopping point. May actually perform a few extra iterations in order to complete sequence. Example: `-n 10000`.
+
+ - `-r` number of repeats. Will perform a full $n$ iterations $r$ times. This is to fix the driver crashing from too long kernel execution times.
 
  - `-1` and `-2` specify the colours to use in the image creation process. `-1` specifies the color of stable attractors, while `-2` specifies the color of chaotic attractors. These values should be given as hex codes. Because of the way the exponents are calculated these will be the colors of the brightest pixels. Colors are RGB. Example: `-1#FF0000 -2 #0000FF`
 
