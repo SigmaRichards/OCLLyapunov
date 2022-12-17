@@ -33,8 +33,6 @@ __kernel void logmap(__global float* v,
       div = b[i]-2*b[i]*cv;
     }
     
-    if((i==384) && (j==64)) printf("%f %i",div,co);
-
     //Get Current val for exponent
     div = fabs(div)+eps;
     div = log(div);
