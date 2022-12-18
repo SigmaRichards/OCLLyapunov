@@ -108,6 +108,9 @@ int render_lyapunov(std::string outname,
     printf("Starting setup...");
     fflush(stdout);
   }
+
+  std::vector<uchar> colim(3*WIDTH*HEIGHT,0);//Output colour pixels
+
   std::vector<float> v_vals(WIDTH*HEIGHT,x0);
   std::vector<float> d_vals(WIDTH*HEIGHT,0);
 
@@ -127,18 +130,18 @@ int render_lyapunov(std::string outname,
 
   //OPENCL STUFF
   //Read kernel
-  FILE *fp;
-  char *source_str;
-  size_t source_size;
+  FILE *fp1;//Logmap
+  char *source_str1;
+  size_t source_size1;
 
-  fp = fopen("src/logmap_kernel.cl", "r");
-  if (!fp) {
+  fp1 = fopen("src/logmap_kernel.cl", "r");
+  if (!fp1) {
     fprintf(stderr, "Failed to load kernel.\n");
     exit(1);
   }
-  source_str = (char *) malloc(MAX_SOURCE_SIZE);
-  source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
-  fclose(fp);
+  source_str1 = (char *) malloc(MAX_SOURCE_SIZE);
+  source_size1 = fread(source_str1, 1, MAX_SOURCE_SIZE, fp1);
+  fclose(fp1);
 
   // Get platform and device information
   cl_platform_id platform_id[platform_ind+1];
@@ -173,6 +176,11 @@ int render_lyapunov(std::string outname,
   cl_mem cl_b = clCreateBuffer(context, CL_MEM_READ_ONLY, b_rvs.size() * sizeof(float), NULL, &ret);
   cl_mem cl_o = clCreateBuffer(context, CL_MEM_READ_ONLY, ord.size() * sizeof(int), NULL, &ret);
 
+  //Objects for colour compute
+  cl_mem cl_c1 = clCreateBuffer(context, CL_MEM_READ_ONLY, c1.size() * sizeof(float), NULL, &ret);
+  cl_mem cl_c2 = clCreateBuffer(context, CL_MEM_READ_ONLY, c2.size() * sizeof(float), NULL, &ret);
+  cl_mem cl_oc = clCreateBuffer(context, CL_MEM_READ_WRITE, colim.size() * sizeof(uchar), NULL, &ret);
+  
   // Copy the data to buffers
   ret = clEnqueueWriteBuffer(command_queue, cl_v, CL_TRUE, 0, v_vals.size() * sizeof(float), p_v, 0, NULL, NULL);
   ret = clEnqueueWriteBuffer(command_queue, cl_d, CL_TRUE, 0, d_vals.size() * sizeof(float), p_d, 0, NULL, NULL);
@@ -180,21 +188,25 @@ int render_lyapunov(std::string outname,
   ret = clEnqueueWriteBuffer(command_queue, cl_b, CL_TRUE, 0, b_rvs.size() * sizeof(float), p_b, 0, NULL, NULL);
   ret = clEnqueueWriteBuffer(command_queue, cl_o, CL_TRUE, 0, ord.size() * sizeof(int), p_o, 0, NULL, NULL);
 
+  ret = clEnqueueWriteBuffer(command_queue, cl_c1, CL_TRUE, 0, c1.size() * sizeof(float), c1.data(), 0, NULL, NULL);
+  ret = clEnqueueWriteBuffer(command_queue, cl_c2, CL_TRUE, 0, c2.size() * sizeof(float), c2.data(), 0, NULL, NULL);
+  ret = clEnqueueWriteBuffer(command_queue, cl_oc, CL_TRUE, 0, colim.size() * sizeof(uchar), colim.data(), 0, NULL, NULL);
+
   // Create a program from the kernel source
-  cl_program program = clCreateProgramWithSource(context, 1, (const char **) &source_str, (const size_t *) &source_size, &ret);
+  cl_program program1 = clCreateProgramWithSource(context, 1, (const char **) &source_str1, (const size_t *) &source_size1, &ret);
 
   // Build the program
-  ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+  ret = clBuildProgram(program1, 1, &device_id, NULL, NULL, NULL);
   if (ret==-11) {
     // Determine the size of the log
     size_t log_size;
-    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+    clGetProgramBuildInfo(program1, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
 
     // Allocate memory for the log
     char *log = (char *) malloc(log_size);
 
     // Get the log
-    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+    clGetProgramBuildInfo(program1, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
 
     // Print the log
     printf("%s\n", log);
@@ -202,7 +214,8 @@ int render_lyapunov(std::string outname,
 
 
   // Create the OpenCL kernel
-  cl_kernel kernel = clCreateKernel(program, "logmap", &ret);
+  cl_kernel kernel = clCreateKernel(program1, "logmap", &ret);
+  cl_kernel kernel2 = clCreateKernel(program1, "get_cols", &ret);
 
   int is_not_last = 0;
   int is_last = 1;
@@ -219,6 +232,14 @@ int render_lyapunov(std::string outname,
   ret = clSetKernelArg(kernel, 8, sizeof(int), (void *) &is_not_last);
   ret = clSetKernelArg(kernel, 9, sizeof(int), (void *) &r_actual);
 
+
+  ret = clSetKernelArg(kernel2, 0, sizeof(cl_mem), (void *) &cl_d);
+  ret = clSetKernelArg(kernel2, 1, sizeof(cl_mem), (void *) &cl_c1);
+  ret = clSetKernelArg(kernel2, 2, sizeof(cl_mem), (void *) &cl_c2);
+  ret = clSetKernelArg(kernel2, 3, sizeof(cl_mem), (void *) &cl_oc);
+  ret = clSetKernelArg(kernel2, 4, sizeof(float), (void *) &exp_p);
+  ret = clSetKernelArg(kernel2, 5, sizeof(int), (void *) &WIDTH);
+
   int lgs_targ = 64;
   while(((WIDTH*HEIGHT)%lgs_targ)!=0){
     lgs_targ = (int)lgs_targ/2;
@@ -234,7 +255,8 @@ int render_lyapunov(std::string outname,
   size_t global_item_size[2] = {(size_t)WIDTH,(size_t)HEIGHT}; // Process the entire lists
   size_t local_item_size[2] = {(size_t)lg0_targ,(size_t)lg1_targ}; // Divide work items into groups of 64
 
-  cl_event kernel_evs[r];
+  cl_event kernel_evs[r+1];
+  cl_event read_kern;
 
   ret = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, &global_item_size[0], &local_item_size[0], 0, NULL, &kernel_evs[0]);
   if(verbose){
@@ -247,35 +269,50 @@ int render_lyapunov(std::string outname,
 	}
 	ret = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, &global_item_size[0], &local_item_size[0], 1, &kernel_evs[i-1], &kernel_evs[i]);
   }
+  //Wait for kernel before runinng next
+  ret = clWaitForEvents(1,&kernel_evs[r-1]);
+  if(verbose){
+    printf("Done!\nComputing colour gradients...");
+    fflush(stdout);
+  }
+  ret = clEnqueueNDRangeKernel(command_queue, kernel2, 2, NULL, &global_item_size[0], &local_item_size[0], 1, &kernel_evs[r-1], &kernel_evs[r]);
 
-  ret = clEnqueueReadBuffer(command_queue, cl_d, CL_TRUE, 0, d_vals.size() * sizeof(float), &p_d[0], 1, &kernel_evs[r-1], NULL);
-  
+  //Wiat for kernel before reading values
+  ret = clWaitForEvents(1,&kernel_evs[r]);
+  if(verbose){
+    printf("Done!\nReading from GPU to host...");
+    fflush(stdout);
+  }
+  ret = clEnqueueReadBuffer(command_queue, cl_oc, CL_TRUE, 0, colim.size() * sizeof(uchar), colim.data(), 1, &kernel_evs[r], &read_kern);
+  ret = clWaitForEvents(1,&read_kern);
+  if(verbose){
+    printf("Done!\nCleaning up cl memory...");
+    fflush(stdout);
+  }
   //Clean Memory
   ret = clFlush(command_queue);
   ret = clFinish(command_queue);
   ret = clReleaseKernel(kernel);
-  ret = clReleaseProgram(program);
+  ret = clReleaseKernel(kernel2);
+  ret = clReleaseProgram(program1);
   ret = clReleaseMemObject(cl_v);
   ret = clReleaseMemObject(cl_d);
   ret = clReleaseMemObject(cl_a);
   ret = clReleaseMemObject(cl_b);
   ret = clReleaseMemObject(cl_o);
+  ret = clReleaseMemObject(cl_c1);
+  ret = clReleaseMemObject(cl_c2);
+  ret = clReleaseMemObject(cl_oc);
   ret = clReleaseCommandQueue(command_queue);
   ret = clReleaseContext(context);
-
-  if(verbose){
-    printf("Done!\nComputing colour gradients...");
-    fflush(stdout);
-  }
-  auto colim = get_cols(d_vals, c1, c2,exp_p);
-
-  cv::Mat img_o(HEIGHT,WIDTH,CV_8UC3,colim.data());
-  cv::cvtColor(img_o, img_o, cv::COLOR_BGR2RGB);
 
   if(verbose){
     printf("Done!\nWriting output to file...");
     fflush(stdout);
   }
+
+  cv::Mat img_o(HEIGHT,WIDTH,CV_8UC3,colim.data());
+  cv::cvtColor(img_o, img_o, cv::COLOR_BGR2RGB);
 
   cv::imwrite(outname, img_o);
   if(verbose){

@@ -43,3 +43,34 @@ __kernel void logmap(__global float* v,
   d[loc] += dsum/act_n; 
   if(is_last!=0) d[loc] /= r;
 }
+
+__kernel void get_cols(__global float* l_arr, //Lyapanov exponents
+                       __global float* c1_arr,//Colour 1 when l<0
+                       __global float* c2_arr,//Colour 2 when l>=0
+                       __global uchar* output,//Output array
+                       float exp_p,  //Exponent
+                       int width){   //Width of output image
+        //Get id and location in array
+        int i = get_global_id(0);// c_width
+        int j = get_global_id(1);// c_height
+        int p_loc = j*width + i;// pixel location
+        int c_loc = 3*p_loc;// colour location
+
+        float fv = 0;
+        uchar cc = 0;
+
+        for(int c_ind = 0; c_ind < 3; c_ind++){
+                fv = l_arr[p_loc];
+                if (fv < 0){ 
+                        fv = exp(fv);
+                        fv = pow(fv, exp_p);
+                        fv = fv * c1_arr[c_ind];
+                }else{
+                        fv = exp(-fv);
+                        fv = pow(fv,exp_p);
+                        fv = fv * c2_arr[c_ind];
+                }
+                cc = (uchar) (255*fv);
+                output[c_loc + c_ind] = cc;
+        }
+}
