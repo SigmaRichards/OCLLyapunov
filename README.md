@@ -22,7 +22,7 @@ Below are all the options. All options are optional.
 
  - `-o` specifies the output name for the image. Example: `-o "out.png"`.
 
- - `-p` power term to increase contrast. Since the exponents are in the infinite domain, the need to be converted to 0-1 to be output as an image. This is done by computing $l = \exp{-|\lambda|}$. By default, most values are close to $1$ meaning there is little contrast. This parameter essentially computes $\hat{l} = l^p$ movnig more points further closer to 0. If you'd like to increase contrast in processing step you can increase this value to an integer. Example: `-p 3`.
+ - `-p` power term to increase contrast. Since the exponents are in the infinite domain, the need to be converted to 0-1 to be output as an image. This is done by computing $l = \exp{-|\lambda|}$. By default, most values are close to $1$ meaning there is little contrast. This parameter essentially computes $\hat{l} = l^p$ moving more points further closer to 0. If you'd like to increase contrast in processing step you can increase this value to a float. Example: `-p 3` or `-p 1.5`.
 
  - `-n` number of iterations to calculate limit over. Since the actual lyupanov exponent needs to be calculated as the limit $n$ approaches infinity, we need to specify some stopping point. May actually perform a few extra iterations in order to complete sequence. Example: `-n 10000`.
 

@@ -66,7 +66,7 @@ std::vector<float> build_rvec(std::vector<float> range, int n_out){
   return out;
 }
 
-std::vector<uchar> get_cols(std::vector<float> vin, std::vector<float> c1, std::vector<float> c2,int exp_p){
+std::vector<uchar> get_cols(std::vector<float> vin, std::vector<float> c1, std::vector<float> c2,float exp_p){
   std::vector<uchar> out;
   for(int i = 0; i < vin.size(); i++){
     //std::vector<uchar> in;
@@ -94,7 +94,7 @@ int render_lyapunov(std::string outname,
                     std::vector<float> ARANG,
                     std::vector<float> BRANG,
                     float x0,
-                    int exp_p,
+                    float exp_p,
                     int n,
 		    int r,
                     std::vector<int> ord,
@@ -315,7 +315,7 @@ int main(int argc, char* argv[]){
   std::vector<float> ARANG = {3,4};
   std::vector<float> BRANG = {3,4};
   float x0 = 0.5;
-  int exp_p = 4;
+  float exp_p = 1;
   int n = 100000;
   int r = 1;
   std::vector<int> ord = {0,1};
@@ -399,7 +399,7 @@ int main(int argc, char* argv[]){
         outname = optarg;
         break;
       case 'p':
-        exp_p = clean_int(optarg);
+        exp_p = clean_float(optarg);
         if(exp_p==-1){
           fprintf (stderr, "Bad argument given to `-%c'.\n", 'p');
           return -1;
