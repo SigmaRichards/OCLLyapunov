@@ -51,6 +51,17 @@ $$\lambda = \lim_{n\rightarrow \infty} \frac{1}{n} \sum_{i=1}^{n} \log |f'(x_i)|
 
 We can generate a fractal by considering the grid/matrix of $r_A,r_B$ pairs over a given range in $\mathcal{R}^2$ for some initial starting value $x_0$.
 
+## To-do
 
+Here's some things that need to be done to make this more usable. These can be split into tasks I actually plan to implement, and tasks which I probably won't.
+
+Probable:
+ - [ ] Move colour compute to kernel
+ - [ ] Verbose mode - runtime analysis
+ - [ ] Find source of driver crash? I think this is a problem with spending too much time in kernel execution, however, I can never consistently recreate this issue. If this occurs, drop the value for `-n` by somne multiple (e.g. 10, 100 etc.) and set `-r` to that multiple. `-r` will re run the kernel after finishing `-n` iterations so the kernel should respond faster.
+
+Improbable
+ - [ ] Error checking - OCL or otherwise
+ - [ ] Rebase inputs - it's gross moving around so many parameters.
 
 
