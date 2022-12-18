@@ -66,27 +66,6 @@ std::vector<float> build_rvec(std::vector<float> range, int n_out){
   return out;
 }
 
-std::vector<uchar> get_cols(std::vector<float> vin, std::vector<float> c1, std::vector<float> c2,float exp_p){
-  std::vector<uchar> out;
-  for(int i = 0; i < vin.size(); i++){
-    //std::vector<uchar> in;
-    for(int j = 0; j < c1.size(); j++){
-      if(vin[i]<0){
-        float fv = exp(vin[i]);
-        fv = pow(fv,exp_p);
-	fv = fv*c1[j];
-        out.push_back((uchar)(int)(255*fv));
-      }else{
-        float fv = exp(-vin[i]);
-        fv = pow(fv,exp_p);
-	fv = fv*c2[j];
-        out.push_back((uchar)(int)(255*fv));
-      }
-    }
-    //out.push_back(in);
-  }
-  return out;
-}
 
 int render_lyapunov(std::string outname,
                     int WIDTH,
