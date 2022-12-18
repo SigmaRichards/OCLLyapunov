@@ -101,8 +101,13 @@ int render_lyapunov(std::string outname,
                     std::vector<float> c1,
                     std::vector<float> c2,
 		    int platform_ind,
-		    int device_ind)
+		    int device_ind,
+		    bool verbose)
 {
+  if(verbose){
+    printf("Starting setup...");
+    fflush(stdout);
+  }
   std::vector<float> v_vals(WIDTH*HEIGHT,x0);
   std::vector<float> d_vals(WIDTH*HEIGHT,0);
 
@@ -229,11 +234,13 @@ int render_lyapunov(std::string outname,
   size_t global_item_size[2] = {(size_t)WIDTH,(size_t)HEIGHT}; // Process the entire lists
   size_t local_item_size[2] = {(size_t)lg0_targ,(size_t)lg1_targ}; // Divide work items into groups of 64
 
-
   cl_event kernel_evs[r];
 
   ret = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, &global_item_size[0], &local_item_size[0], 0, NULL, &kernel_evs[0]);
-
+  if(verbose){
+    printf("Done!\nStarting runs...");
+    fflush(stdout);
+  }
   for(int i = 1; i < r_actual; i++){
 	if ((r-1)==i){
 	  ret = clSetKernelArg(kernel, 8, sizeof(int), (void *) &is_last);
@@ -242,7 +249,7 @@ int render_lyapunov(std::string outname,
   }
 
   ret = clEnqueueReadBuffer(command_queue, cl_d, CL_TRUE, 0, d_vals.size() * sizeof(float), &p_d[0], 1, &kernel_evs[r-1], NULL);
-
+  
   //Clean Memory
   ret = clFlush(command_queue);
   ret = clFinish(command_queue);
@@ -256,12 +263,24 @@ int render_lyapunov(std::string outname,
   ret = clReleaseCommandQueue(command_queue);
   ret = clReleaseContext(context);
 
+  if(verbose){
+    printf("Done!\nComputing colour gradients...");
+    fflush(stdout);
+  }
   auto colim = get_cols(d_vals, c1, c2,exp_p);
 
   cv::Mat img_o(HEIGHT,WIDTH,CV_8UC3,colim.data());
   cv::cvtColor(img_o, img_o, cv::COLOR_BGR2RGB);
-  cv::imwrite(outname, img_o);
 
+  if(verbose){
+    printf("Done!\nWriting output to file...");
+    fflush(stdout);
+  }
+
+  cv::imwrite(outname, img_o);
+  if(verbose){
+    printf("Done!\n");
+  }
   return 0;
 }
 
@@ -434,9 +453,9 @@ int main(int argc, char* argv[]){
   int profile_ind = cl_dev[0];
   int device_ind = cl_dev[1];
   if(verbose){
-    print_input_args(outname,WIDTH,HEIGHT,ARANG,BRANG,
-		     x0,exp_p,n,r,ord,c1,c2,cl_dev);
+    //print_input_args(outname,WIDTH,HEIGHT,ARANG,BRANG,
+    //		     x0,exp_p,n,r,ord,c1,c2,cl_dev);
   }
-  int ret = render_lyapunov(outname,WIDTH,HEIGHT,ARANG,BRANG,x0,exp_p,n,r,ord,c1,c2,profile_ind,device_ind);
+  int ret = render_lyapunov(outname,WIDTH,HEIGHT,ARANG,BRANG,x0,exp_p,n,r,ord,c1,c2,profile_ind,device_ind,verbose);
 	return ret;
 }
