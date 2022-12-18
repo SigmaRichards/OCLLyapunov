@@ -89,9 +89,11 @@ int render_lyapunov(std::string outname,
   }
 
   std::vector<uchar> colim(3*WIDTH*HEIGHT,0);//Output colour pixels
+  
+  size_t v_size = WIDTH*HEIGHT;
+  size_t d_size = WIDTH*HEIGHT;
 
-  std::vector<float> v_vals(WIDTH*HEIGHT,x0);
-  std::vector<float> d_vals(WIDTH*HEIGHT,0);
+  float d0 = 0.0f;
 
   std::vector<float> a_rvs = build_rvec(ARANG,HEIGHT);
   std::vector<float> b_rvs = build_rvec(BRANG,WIDTH);
@@ -101,8 +103,6 @@ int render_lyapunov(std::string outname,
 
   int olen = (int)ord.size();
 
-  float* p_v = v_vals.data();
-  float* p_d = d_vals.data();
   float* p_a = a_rvs.data();
   float* p_b = b_rvs.data();
   int* p_o = ord.data();
@@ -149,8 +149,8 @@ int render_lyapunov(std::string outname,
   cl_command_queue command_queue = clCreateCommandQueue(context, device_id, 0, &ret);
 
   // Create memory buffers on the device for each vector
-  cl_mem cl_v = clCreateBuffer(context, CL_MEM_READ_WRITE, v_vals.size() * sizeof(float), NULL, &ret);
-  cl_mem cl_d = clCreateBuffer(context, CL_MEM_READ_WRITE, d_vals.size() * sizeof(float), NULL, &ret);
+  cl_mem cl_v = clCreateBuffer(context, CL_MEM_READ_WRITE, v_size * sizeof(float), NULL, &ret);
+  cl_mem cl_d = clCreateBuffer(context, CL_MEM_READ_WRITE, d_size * sizeof(float), NULL, &ret);
   cl_mem cl_a = clCreateBuffer(context, CL_MEM_READ_ONLY, a_rvs.size() * sizeof(float), NULL, &ret);
   cl_mem cl_b = clCreateBuffer(context, CL_MEM_READ_ONLY, b_rvs.size() * sizeof(float), NULL, &ret);
   cl_mem cl_o = clCreateBuffer(context, CL_MEM_READ_ONLY, ord.size() * sizeof(int), NULL, &ret);
@@ -161,8 +161,9 @@ int render_lyapunov(std::string outname,
   cl_mem cl_oc = clCreateBuffer(context, CL_MEM_READ_WRITE, colim.size() * sizeof(uchar), NULL, &ret);
   
   // Copy the data to buffers
-  ret = clEnqueueWriteBuffer(command_queue, cl_v, CL_TRUE, 0, v_vals.size() * sizeof(float), p_v, 0, NULL, NULL);
-  ret = clEnqueueWriteBuffer(command_queue, cl_d, CL_TRUE, 0, d_vals.size() * sizeof(float), p_d, 0, NULL, NULL);
+  ret = clEnqueueFillBuffer(command_queue, cl_v, (void *)(&x0), sizeof(float),0,v_size * sizeof(float),0,NULL,NULL);
+  ret = clEnqueueFillBuffer(command_queue, cl_d, (void *)(&d0), sizeof(float),0,d_size * sizeof(float),0,NULL,NULL);
+  
   ret = clEnqueueWriteBuffer(command_queue, cl_a, CL_TRUE, 0, a_rvs.size() * sizeof(float), p_a, 0, NULL, NULL);
   ret = clEnqueueWriteBuffer(command_queue, cl_b, CL_TRUE, 0, b_rvs.size() * sizeof(float), p_b, 0, NULL, NULL);
   ret = clEnqueueWriteBuffer(command_queue, cl_o, CL_TRUE, 0, ord.size() * sizeof(int), p_o, 0, NULL, NULL);
